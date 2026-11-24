@@ -1,0 +1,41 @@
+# --- Opening auction --------------------------------------------------------
+session preopen
+buy  1 10 102
+buy  2  5 101
+buy  3 10 100 day
+sell 4  5  99
+sell 5 10 100
+sell 6 10 101
+book
+# Uncross: max executable volume (15) at 100 and 101; tie broken by reference price
+session open
+book
+
+# --- Continuous trading ------------------------------------------------------
+sell 7 4 101 owner=42
+buy  8 6 101 ioc
+# FOK that cannot be filled completely -> cancelled, book untouched
+buy  9 50 105 fok
+# Post-only that would cross -> rejected
+buy 10 5 101 post
+# Reduce in place (keeps priority), then reprice (loses priority, may trade).
+# Quantities are total order size (FIX semantics).
+modify 3 100 6
+modify 3 101 6
+# Self-trade prevention: owner 42 hits its own resting order
+buy 11 3 105 owner=42
+# Another owner cannot cancel owner 42's order: ids are scoped per owner
+cancel 7
+mbuy 12 3
+book
+
+# --- Halt, then close ---------------------------------------------------------
+buy  13 5  99 day
+sell 14 5 110 gtc
+session halted
+# Halted: new orders and modifies rejected, cancels allowed
+buy  15 1 100
+modify 14 109 5
+session closed
+# Close: Day order 13 expires, GTC order 14 persists to the next session
+book
